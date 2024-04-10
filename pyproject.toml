@@ -26,6 +26,7 @@ dependencies = [
     "python-dotenv",
     "fastapi",
     "fastapi-chameleon",
+    "python-multipart",
     "uvicorn",
     "requests",
     "aiokafka",
