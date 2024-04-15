@@ -9,6 +9,7 @@ from PIL import Image
 from PIL import ImageDraw
 from starlette.background import BackgroundTask
 from typing import Annotated
+from typing import Literal
 
 import os
 import pathlib
@@ -61,37 +62,71 @@ class MaskFormats(StrEnum):
     BOX = "Box Mask"
 
 
+class AspectRatios(StrEnum):
+    FREE = "Free (no predefined Aspect Ratio, please define width and hight manually)"
+    SQUARE = "Square (Aspect Ratio 1:1)"
+    LANDSCAPE_3x2 = "Landscape (Aspect Ratio 3:2 (Width:Height))"
+    LANDSCAPE_4x3 = "Landscape (Aspect Ratio 4:3 (Width:Height))"
+    LANDSCAPE_16x9 = "Landscape (Aspect Ratio 16:9 (Width:Height))"
+    LANDSCAPE_16x10 = "Landscape (Aspect Ratio 16:10 (Width:Height))"
+    PORTRAIT_3x4 = "Portrait (Aspect Ratio 3:4 (Width:Height))"
+
+
 @app.post("/crop/", response_class=FileResponse)
 async def crop_file(
-    file: UploadFile, *, mask: Annotated[str, MaskFormats] = MaskFormats.NONE
+    file: UploadFile,
+    *,
+    mask: Annotated[Literal[MaskFormats.NONE, MaskFormats.CIRCLE, MaskFormats.BOX], MaskFormats] = MaskFormats.NONE,
+    image_size: Annotated[Literal[AspectRatios.FREE, AspectRatios.SQUARE, AspectRatios.PORTRAIT_3x4], AspectRatios] = AspectRatios.SQUARE,
+    height: Annotated[int, "Hight of result Image"] = 1000,
+    width: Annotated[int | Literal["auto", "AUTO"], "Width of result Image"] = "auto",
+    radius: Annotated[int, "Radius of Mask Box, if mask == BOX"] = 100,
 ):
-    print(file.filename)
-    print(file.size)
-    print(file.headers)
-    print(mask)
+    logger.debug(file.filename)
+    logger.debug(file.size)
+    logger.debug(file.headers)
+    logger.debug(mask)
 
     # return {"file-name": file.filename, "file-size": file.size}
 
     photo = Image.open(file.file)
-    photo = photo.resize((1000, 1000))
 
-    mask_circle_image = Image.new("RGBA", size=(1000, 1000))
-    mask_circle = ImageDraw.Draw(mask_circle_image)
-    mask_circle.ellipse((10, 10, 990, 990), fill="#ffffff")
-    # mask_circle_image.save(f"output/{image_file}/mask_circle_1000x1000.png", format="PNG", optimize=True)
+    if width in ["auto", "AUTO"] and image_size == AspectRatios.FREE:
+        raise ValueError(
+            "Key width-value is 'auto', which is not allowed for image_size: free"
+        )
+    elif width in ["auto", "AUTO"]:
+        if image_size == AspectRatios.SQUARE:
+            width = height
+        elif image_size == AspectRatios.PORTRAIT_3x4:
+            width = int(height / 4 * 3)
 
-    mask_box_image = Image.new("RGBA", size=(1000, 1000))
-    mask_box = ImageDraw.Draw(mask_box_image)
-    mask_box.rounded_rectangle((0, 0, 1000, 1000), radius=100, fill="#ffffff")
-    # mask_box_image.save(f"output/{image_file}/mask_box_1000x1000.png", format="PNG", optimize=True)
+    else:
+        # case where width is an actual int value and image_size is free
+        pass
+    assert isinstance(width, int)
 
-    background = Image.new("RGBA", size=(1000, 1000))
+    photo = photo.resize((width, height))
+    mask_image = Image.new("RGBA", size=(width, height))
+
+    if mask == MaskFormats.CIRCLE:
+        mask_circle = ImageDraw.Draw(mask_image)
+        mask_circle.ellipse((0, 0, width, height), fill="#ffffff")
+    elif mask == MaskFormats.BOX:
+        mask_box = ImageDraw.Draw(mask_image)
+        mask_box.rounded_rectangle((0, 0, width, height), radius=radius, fill="#ffffff")
+    elif mask == MaskFormats.NONE:  # Default Case
+        pass
+    else:
+        raise KeyError(f"Unknown Mask Type: {mask}")
 
     output_file = tempfile.mkstemp(suffix=".png")[1]
     # breakpoint()
 
-    result_circle = Image.composite(photo, background, mask_circle_image)
-    result_circle.save(output_file, format="PNG", optimize=True)
+    if mask in (MaskFormats.CIRCLE, MaskFormats.BOX):
+        background = Image.new("RGBA", size=(width, height))
+        result_image = Image.composite(photo, background, mask_image)
+        result_image.save(output_file, format="PNG", optimize=True)
 
     # breakpoint()
     return FileResponse(
