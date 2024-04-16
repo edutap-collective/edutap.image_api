@@ -127,6 +127,8 @@ async def crop_file(
         background = Image.new("RGBA", size=(width, height))
         result_image = Image.composite(photo, background, mask_image)
         result_image.save(output_file, format="PNG", optimize=True)
+    else:
+        photo.save(output_file, format="PNG", optimize=True)
 
     # breakpoint()
     return FileResponse(
