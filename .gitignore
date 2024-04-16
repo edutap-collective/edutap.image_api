@@ -18,6 +18,7 @@ docs/_build
 __pycache__/
 .tox
 .vscode/
+.idea/
 node_modules/
 sandbox/
 
