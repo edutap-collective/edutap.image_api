@@ -12,7 +12,7 @@ interface ImageCropProps {
 }
 
 // TODO: make container to contain image with max width and fixed padding
-// TODO: better error handling, there are some errors whith error messages from the server which should be displayed
+// TODO: better error handling, there are some errors with error messages from the server which should be displayed
 // TODO: show loading spinner for at least 2 seconds
 
 const ImageCrop = ({file, crop}: ImageCropProps) => {

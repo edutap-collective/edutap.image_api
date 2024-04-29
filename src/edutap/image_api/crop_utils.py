@@ -4,7 +4,9 @@ import cv2
 import cv2.data
 
 
-FACE_CASCADE = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+FACE_CASCADE = cv2.CascadeClassifier(
+    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+)
 
 
 def crop_center(image: Image, width: int, height: int):
@@ -27,7 +29,7 @@ def find_face(image_file) -> list[dict]:
     """
     Find Faces in Photo
     """
-    result = []
+    result: list[dict] = []
     # Read
     cv_photo = cv2.imread(image_file)
     height, width, _ = cv_photo.shape
@@ -40,6 +42,5 @@ def find_face(image_file) -> list[dict]:
 
     for x, y, w, h in faces:
         pass
-
 
     return result

@@ -1,13 +1,17 @@
 from contextlib import asynccontextmanager
-from enum import StrEnum, auto
-from fastapi import FastAPI, Form, File
+from enum import auto
+from enum import StrEnum
+from fastapi import FastAPI
+from fastapi import File
+from fastapi import Form
 from fastapi import UploadFile
 from fastapi.logger import logger
-from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from importlib.metadata import version
 from PIL import Image
 from PIL import ImageDraw
+from pydantic import BaseModel
 from starlette.background import BackgroundTask
 from typing import Annotated
 from typing import Literal
@@ -43,9 +47,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-origins = [
-    "http://localhost:5173"
-]
+origins = ["http://localhost:5173"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,6 +69,67 @@ async def read_root():
 @app.get("/openapi.json")
 async def openapi():
     return app.openapi()
+
+
+class ImageSize(BaseModel):
+    name: str
+    width: int
+    height: int
+
+
+AppleWalletBackgroundImage = ImageSize(name="background.png", width=180, height=220)
+AppleWalletBackground2Image = ImageSize(
+    name="background@2x.png", width=180 * 2, height=220 * 2
+)
+AppleWalletBackground3Image = ImageSize(
+    name="background@3x.png", width=180 * 3, height=220 * 3
+)
+
+AppleWalletFooterImage = ImageSize(name="footer.png", width=286, height=15)
+AppleWalletFooter2Image = ImageSize(name="footer@2x.png", width=286 * 2, height=15 * 2)
+AppleWalletFooter3Image = ImageSize(name="footer@3x.png", width=286 * 3, height=15 * 3)
+
+AppleWalletIconImage = ImageSize(name="icon.png", width=29, height=29)
+AppleWalletIcon2Image = ImageSize(name="icon@2x.png", width=29 * 2, height=29 * 2)
+AppleWalletIcon3Image = ImageSize(name="icon@3x.png", width=29 * 3, height=29 * 3)
+
+AppleWalletLogoImage = ImageSize(name="logo.png", width=160, height=50)
+AppleWalletLogo2Image = ImageSize(name="logo@2x.png", width=160 * 2, height=50 * 2)
+AppleWalletLogo3Image = ImageSize(name="logo@3x.png", width=160 * 3, height=50 * 3)
+
+AppleWalletThumbnailImage = ImageSize(name="thumbnail.png", width=90, height=90)
+AppleWalletThumbnail2Image = ImageSize(
+    name="thumbnail@2x.png", width=90 * 2, height=90 * 2
+)
+AppleWalletThumbnail3Image = ImageSize(
+    name="thumbnail@3x.png", width=90 * 3, height=90 * 3
+)
+
+AppleWalletStripImageEventTicket = ImageSize(name="strip.png", width=375, height=98)
+AppleWalletStrip2ImageEventTicket = ImageSize(
+    name="strip@2x.png", width=375 * 2, height=98 * 2
+)
+AppleWalletStrip3ImageEventTicket = ImageSize(
+    name="strip@3x.png", width=375 * 3, height=98 * 3
+)
+
+AppleWalletStripImageGiftCardAndCoupons = ImageSize(
+    name="strip.png", width=375, height=144
+)
+AppleWalletStrip2ImageGiftCardAndCoupons = ImageSize(
+    name="strip@2x.png", width=375 * 2, height=144 * 2
+)
+AppleWalletStrip3ImageGiftCardAndCoupons = ImageSize(
+    name="strip@3x.png", width=375 * 3, height=144 * 3
+)
+
+AppleWalletStripImageOther = ImageSize(name="strip.png", width=375, height=123)
+AppleWalletStrip2ImageOther = ImageSize(
+    name="strip@2x.png", width=375 * 2, height=123 * 2
+)
+AppleWalletStrip3ImageOther = ImageSize(
+    name="strip@3x.png", width=375 * 3, height=123 * 3
+)
 
 
 class MaskTypeEnum(StrEnum):
@@ -99,10 +162,16 @@ class AspectRatioEnum(StrEnum):
 async def crop_file(
     file: Annotated[UploadFile, File(description="Image File")],
     mask: Annotated[MaskTypeEnum, Form(description="Mask Type")] = MaskTypeEnum.NONE,
-    aspect_ratio: Annotated[AspectRatioEnum, Form(description="Aspect Ratio of result Image")] = AspectRatioEnum.SQUARE,
+    aspect_ratio: Annotated[
+        AspectRatioEnum, Form(description="Aspect Ratio of result Image")
+    ] = AspectRatioEnum.SQUARE,
     height: Annotated[int, Form(description="Height of result Image")] = 1000,
-    width: Annotated[int | Literal["auto"], Form(description="Width of result Image")] = "auto",
-    radius: Annotated[int, Form(description="Radius of Mask Box, if mask == BOX")] = 100,
+    width: Annotated[
+        int | Literal["auto"], Form(description="Width of result Image")
+    ] = "auto",
+    radius: Annotated[
+        int, Form(description="Radius of Mask Box, if mask == BOX")
+    ] = 100,
 ):
     logger.debug(f"Filename: {file.filename}")
     logger.debug(f"Filesize: {file.size}")
