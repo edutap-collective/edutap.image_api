@@ -1,6 +1,11 @@
+from .models import AppleWalletImageDefinitions
+from .models import AppleWalletImageDefinitionsLiteral
+from .models import AspectRatioEnum
+from .models import GoogleWalletImageDefinitions
+from .models import GoogleWalletImageDefinitionsLiteral
+from .models import ImageSize
+from .models import MaskTypeEnum
 from contextlib import asynccontextmanager
-from enum import auto
-from enum import StrEnum
 from fastapi import FastAPI
 from fastapi import File
 from fastapi import Form
@@ -11,7 +16,6 @@ from fastapi.responses import FileResponse
 from importlib.metadata import version
 from PIL import Image
 from PIL import ImageDraw
-from pydantic import BaseModel
 from starlette.background import BackgroundTask
 from typing import Annotated
 from typing import Literal
@@ -69,93 +73,6 @@ async def read_root():
 @app.get("/openapi.json")
 async def openapi():
     return app.openapi()
-
-
-class ImageSize(BaseModel):
-    name: str
-    width: int
-    height: int
-
-
-AppleWalletBackgroundImage = ImageSize(name="background.png", width=180, height=220)
-AppleWalletBackground2Image = ImageSize(
-    name="background@2x.png", width=180 * 2, height=220 * 2
-)
-AppleWalletBackground3Image = ImageSize(
-    name="background@3x.png", width=180 * 3, height=220 * 3
-)
-
-AppleWalletFooterImage = ImageSize(name="footer.png", width=286, height=15)
-AppleWalletFooter2Image = ImageSize(name="footer@2x.png", width=286 * 2, height=15 * 2)
-AppleWalletFooter3Image = ImageSize(name="footer@3x.png", width=286 * 3, height=15 * 3)
-
-AppleWalletIconImage = ImageSize(name="icon.png", width=29, height=29)
-AppleWalletIcon2Image = ImageSize(name="icon@2x.png", width=29 * 2, height=29 * 2)
-AppleWalletIcon3Image = ImageSize(name="icon@3x.png", width=29 * 3, height=29 * 3)
-
-AppleWalletLogoImage = ImageSize(name="logo.png", width=160, height=50)
-AppleWalletLogo2Image = ImageSize(name="logo@2x.png", width=160 * 2, height=50 * 2)
-AppleWalletLogo3Image = ImageSize(name="logo@3x.png", width=160 * 3, height=50 * 3)
-
-AppleWalletThumbnailImage = ImageSize(name="thumbnail.png", width=90, height=90)
-AppleWalletThumbnail2Image = ImageSize(
-    name="thumbnail@2x.png", width=90 * 2, height=90 * 2
-)
-AppleWalletThumbnail3Image = ImageSize(
-    name="thumbnail@3x.png", width=90 * 3, height=90 * 3
-)
-
-AppleWalletStripImageEventTicket = ImageSize(name="strip.png", width=375, height=98)
-AppleWalletStrip2ImageEventTicket = ImageSize(
-    name="strip@2x.png", width=375 * 2, height=98 * 2
-)
-AppleWalletStrip3ImageEventTicket = ImageSize(
-    name="strip@3x.png", width=375 * 3, height=98 * 3
-)
-
-AppleWalletStripImageGiftCardAndCoupons = ImageSize(
-    name="strip.png", width=375, height=144
-)
-AppleWalletStrip2ImageGiftCardAndCoupons = ImageSize(
-    name="strip@2x.png", width=375 * 2, height=144 * 2
-)
-AppleWalletStrip3ImageGiftCardAndCoupons = ImageSize(
-    name="strip@3x.png", width=375 * 3, height=144 * 3
-)
-
-AppleWalletStripImageOther = ImageSize(name="strip.png", width=375, height=123)
-AppleWalletStrip2ImageOther = ImageSize(
-    name="strip@2x.png", width=375 * 2, height=123 * 2
-)
-AppleWalletStrip3ImageOther = ImageSize(
-    name="strip@3x.png", width=375 * 3, height=123 * 3
-)
-
-
-class MaskTypeEnum(StrEnum):
-    NONE = auto()
-    """No Mask"""
-    CIRCLE = auto()
-    """Circle Mask"""
-    BOX = auto()
-    """Box Mask"""
-
-
-class AspectRatioEnum(StrEnum):
-    SQUARE = auto()
-    """Square (Aspect Ratio 1:1)"""
-    LANDSCAPE_3x2 = auto()
-    """Landscape (Aspect Ratio 3:2 (Width:Height))"""
-    LANDSCAPE_4x3 = auto()
-    """Landscape (Aspect Ratio 4:3 (Width:Height))"""
-    LANDSCAPE_16x9 = auto()
-    """Landscape (Aspect Ratio 16:9 (Width:Height))"""
-    LANDSCAPE_16x10 = auto()
-    """Landscape (Aspect Ratio 16:10 (Width:Height))"""
-    PORTRAIT_3x4 = auto()
-    """Portrait (Aspect Ratio 3:4 (Width:Height))"""
-    FREE = auto()
-    """No predefined Aspect Ratio, width and height must be defined manually)"""
 
 
 @app.post("/crop/", response_class=FileResponse)
@@ -230,6 +147,47 @@ async def crop_file(
     return FileResponse(
         output_file,
         filename="mask.png",
+        background=BackgroundTask(os.remove, output_file),
+    )
+
+
+@app.post("/crop_wallet_assets_apple/", response_class=FileResponse)
+async def crop_wallet_assets_file_apple(
+    file: Annotated[UploadFile, File(description="Image File")],
+    variant: Annotated[
+        AppleWalletImageDefinitionsLiteral,
+        Form(description="Wallet Type Asset Definition"),
+    ],
+):
+    definition: ImageSize = AppleWalletImageDefinitions[variant]
+    photo = Image.open(file.file)
+    photo = photo.resize((definition.width, definition.height))
+    output_file = tempfile.mkstemp(suffix=".png")[1]
+    photo.show()
+
+    return FileResponse(
+        output_file,
+        filename=definition.name,
+        background=BackgroundTask(os.remove, output_file),
+    )
+
+
+@app.post("/crop_wallet_assets_google/", response_class=FileResponse)
+async def crop_wallet_assets_file_google(
+    file: Annotated[UploadFile, File(description="Image File")],
+    variant: Annotated[
+        GoogleWalletImageDefinitionsLiteral,
+        Form(description="Wallet Type Asset Definition"),
+    ],
+):
+    definition: ImageSize = GoogleWalletImageDefinitions[variant]
+    photo = Image.open(file.file)
+    photo = photo.resize((definition.width, definition.height))
+    output_file = tempfile.mkstemp(suffix=".png")[1]
+
+    return FileResponse(
+        output_file,
+        filename=definition.name,
         background=BackgroundTask(os.remove, output_file),
     )
 

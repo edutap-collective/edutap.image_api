@@ -21,6 +21,8 @@ __pycache__/
 .idea/
 node_modules/
 sandbox/
+.mypy_cache/
+.pytest_cache/
 
 # venv / buildout related
 bin/
@@ -52,3 +54,5 @@ var/
 # docker setup related
 /kafka_data/
 /letsencrypt/
+/db/
+db/

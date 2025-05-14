@@ -79,7 +79,7 @@ include = "src"
 
 [tool.codespell]
 ignore-words-list = "discreet,"
-skip = "./ansible/*.yml,traefik.yaml"
+skip = "./ansible/*.yml,traefik.yaml,./.vscode/*.json"
 
 [tool.check-manifest]
 ignore = [
