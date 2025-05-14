@@ -12,7 +12,7 @@ services:
     dns:
       ${DNS:-8.8.8.8}
     ports:
-      - "${HTTP_PORT:-9085}:${API_HTTP_PORT:-80}"
+      - "${HTTP_PORT:-9500}:${API_HTTP_PORT:-80}"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.image-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/`)"
