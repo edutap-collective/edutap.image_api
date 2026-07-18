@@ -1,15 +1,8 @@
+from .face_analysis import BBox
 from PIL import Image
 
-import cv2
-import cv2.data
 
-
-FACE_CASCADE = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-)
-
-
-def crop_center(image: Image, width: int, height: int):
+def crop_center(image: Image.Image, width: int, height: int) -> Image.Image:
     img_width, img_height = image.size
     return image.crop(
         (
@@ -21,26 +14,32 @@ def crop_center(image: Image, width: int, height: int):
     )
 
 
-def crop_max_square_and_resize(image: Image):
+def crop_max_square_and_resize(image: Image.Image) -> Image.Image:
     return crop_center(image, min(image.size), min(image.size))
 
 
-def find_face(image_file) -> list[dict]:
-    """
-    Find Faces in Photo
-    """
-    result: list[dict] = []
-    # Read
-    cv_photo = cv2.imread(image_file)
-    height, width, _ = cv_photo.shape
+def crop_face_centered(
+    image: Image.Image,
+    bbox: BBox,
+    size: int,
+    margin_factor: float,
+) -> Image.Image:
+    """Crop a square centered on the face bbox, then resize to size by size."""
+    img = image.convert("RGB")
+    w, h = img.size
+    cx = bbox.center[0] * w
+    cy = bbox.center[1] * h
 
-    # Convert into grayscale
-    grayscale_photo = cv2.cvtColor(cv_photo, cv2.COLOR_BGR2GRAY)
+    side = bbox.height * h * margin_factor
+    side = min(side, w, h)
+    half = side / 2
 
-    # Detect faces
-    faces = FACE_CASCADE.detectMultiScale(grayscale_photo, 1.1, 4)
+    left = cx - half
+    top = cy - half
+    # Shift the square fully inside the image instead of shrinking it.
+    left = max(0.0, min(left, w - side))
+    top = max(0.0, min(top, h - side))
 
-    for x, y, w, h in faces:
-        pass
-
-    return result
+    box = (round(left), round(top), round(left + side), round(top + side))
+    square = img.crop(box)
+    return square.resize((size, size))
