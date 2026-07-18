@@ -23,6 +23,7 @@ classifiers = [
 ]
 dependencies = [
     "pydantic[email,dotenv]>=2.0",
+    "pydantic-settings>=2.0",
     "python-dotenv",
     "fastapi",
     "fastapi-chameleon",
