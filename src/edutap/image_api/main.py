@@ -90,14 +90,15 @@ async def crop_file(
         int, Form(description="Radius of Mask Box, if mask == BOX")
     ] = 100,
 ):
-    logger.debug(f"Filename: {file.filename}")
-    logger.debug(f"Filesize: {file.size}")
-    logger.debug(f"File Headers: {file.headers}")
-    logger.debug(f"Mask: {mask}")
-    logger.debug(f"Aspect Ratio: {aspect_ratio}")
-    logger.debug(f"Height: {height}")
-    logger.debug(f"Width: {width}")
-    logger.debug(f"Radius: {radius}")
+    # breakpoint()
+    logger.debug("Filename: %s", file.filename)
+    logger.debug("Filesize: %s", file.size)
+    logger.debug("File Headers: %s", file.headers)
+    logger.debug("Mask: %s", mask)
+    logger.debug("Aspect Ratio: %s", aspect_ratio)
+    logger.debug("Height: %s", height)
+    logger.debug("Width: %s", width)
+    logger.debug("Radius: %s", radius)
 
     # Note: When uncommenting, remove the response_class=FileResponse from the function signature, otherwise this will raise an error
     # return {"file-name": file.filename, "file-size": file.size}
