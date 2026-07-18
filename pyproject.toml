@@ -77,6 +77,10 @@ minversion = "6.0"
 testpaths = [
     "tests",
 ]
+markers = [
+    "integration: tests that load the MediaPipe model and real images",
+]
+asyncio_mode = "auto"
 
 [tool.isort]
 profile = "plone"

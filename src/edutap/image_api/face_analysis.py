@@ -1,7 +1,14 @@
 from dataclasses import dataclass
+from PIL import Image
 
 import math
 import numpy as np
+import pathlib
+import threading
+
+import mediapipe as mp
+from mediapipe.tasks import python as mp_python
+from mediapipe.tasks.python import vision as mp_vision
 
 
 @dataclass(frozen=True)
@@ -62,3 +69,73 @@ def head_pose_from_matrix(matrix: np.ndarray) -> HeadPose:
         pitch=math.degrees(pitch),
         roll=math.degrees(roll),
     )
+
+
+@dataclass(frozen=True)
+class Face:
+    bbox: BBox
+    head_pose: HeadPose
+    blendshapes: dict[str, float]
+    has_iris: bool
+
+
+@dataclass(frozen=True)
+class FaceAnalysisResult:
+    image_width: int
+    image_height: int
+    faces: list["Face"]
+
+    @property
+    def face_count(self) -> int:
+        return len(self.faces)
+
+
+# MediaPipe iris landmark indices (refine_landmarks adds indices 468-477).
+_IRIS_INDEX_MIN = 468
+
+
+class FaceAnalyzer:
+    """Thread-safe wrapper around MediaPipe Face Landmarker."""
+
+    def __init__(self, model_path: str, num_faces: int = 5) -> None:
+        if not pathlib.Path(model_path).is_file():
+            raise FileNotFoundError(f"Face landmarker model not found: {model_path}")
+        options = mp_vision.FaceLandmarkerOptions(
+            base_options=mp_python.BaseOptions(model_asset_path=model_path),
+            running_mode=mp_vision.RunningMode.IMAGE,
+            num_faces=num_faces,
+            output_face_blendshapes=True,
+            output_facial_transformation_matrixes=True,
+        )
+        self._landmarker = mp_vision.FaceLandmarker.create_from_options(options)
+        self._lock = threading.Lock()
+
+    def analyze(self, image: Image.Image) -> FaceAnalysisResult:
+        rgb = image.convert("RGB")
+        np_image = np.asarray(rgb)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=np_image)
+        with self._lock:
+            result = self._landmarker.detect(mp_image)
+
+        faces: list[Face] = []
+        matrixes = result.facial_transformation_matrixes or []
+        blendshape_lists = result.face_blendshapes or []
+        for idx, landmarks in enumerate(result.face_landmarks):
+            points = [(lm.x, lm.y) for lm in landmarks]
+            bbox = bbox_from_landmarks(points)
+            matrix = np.asarray(matrixes[idx]) if idx < len(matrixes) else np.eye(4)
+            pose = head_pose_from_matrix(matrix)
+            shapes: dict[str, float] = {}
+            if idx < len(blendshape_lists):
+                shapes = {c.category_name: c.score for c in blendshape_lists[idx]}
+            has_iris = len(landmarks) > _IRIS_INDEX_MIN
+            faces.append(Face(bbox=bbox, head_pose=pose, blendshapes=shapes, has_iris=has_iris))
+
+        return FaceAnalysisResult(
+            image_width=rgb.width,
+            image_height=rgb.height,
+            faces=faces,
+        )
+
+    def close(self) -> None:
+        self._landmarker.close()
