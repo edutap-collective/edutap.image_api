@@ -129,7 +129,9 @@ class FaceAnalyzer:
             if idx < len(blendshape_lists):
                 shapes = {c.category_name: c.score for c in blendshape_lists[idx]}
             has_iris = len(landmarks) > _IRIS_INDEX_MIN
-            faces.append(Face(bbox=bbox, head_pose=pose, blendshapes=shapes, has_iris=has_iris))
+            faces.append(
+                Face(bbox=bbox, head_pose=pose, blendshapes=shapes, has_iris=has_iris)
+            )
 
         return FaceAnalysisResult(
             image_width=rgb.width,

@@ -3,7 +3,6 @@ import numpy as np
 import pathlib
 import pytest
 from PIL import Image
-from edutap.image_api.face_analysis import BBox
 from edutap.image_api.face_analysis import bbox_from_landmarks
 from edutap.image_api.face_analysis import head_pose_from_matrix
 from edutap.image_api.face_analysis import FaceAnalyzer

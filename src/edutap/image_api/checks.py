@@ -35,7 +35,9 @@ def check_exactly_one_face(ctx: CheckContext) -> CheckResult:
 def check_face_size(ctx: CheckContext) -> CheckResult:
     face = _single_face(ctx)
     if face is None:
-        return CheckResult(name="face_size", passed=False, detail="requires exactly one face")
+        return CheckResult(
+            name="face_size", passed=False, detail="requires exactly one face"
+        )
     ratio = face.bbox.area
     s = ctx.settings
     ok = s.min_face_area_ratio <= ratio <= s.max_face_area_ratio
@@ -50,7 +52,9 @@ def check_face_size(ctx: CheckContext) -> CheckResult:
 def check_face_centered(ctx: CheckContext) -> CheckResult:
     face = _single_face(ctx)
     if face is None:
-        return CheckResult(name="face_centered", passed=False, detail="requires exactly one face")
+        return CheckResult(
+            name="face_centered", passed=False, detail="requires exactly one face"
+        )
     cx, cy = face.bbox.center
     offset = max(abs(cx - 0.5), abs(cy - 0.5))
     ok = offset <= ctx.settings.max_center_offset_ratio
@@ -65,7 +69,9 @@ def check_face_centered(ctx: CheckContext) -> CheckResult:
 def check_frontal_pose(ctx: CheckContext) -> CheckResult:
     face = _single_face(ctx)
     if face is None:
-        return CheckResult(name="frontal_pose", passed=False, detail="requires exactly one face")
+        return CheckResult(
+            name="frontal_pose", passed=False, detail="requires exactly one face"
+        )
     pose = face.head_pose
     s = ctx.settings
     ok = (
@@ -88,7 +94,9 @@ def check_frontal_pose(ctx: CheckContext) -> CheckResult:
 def check_eyes_open(ctx: CheckContext) -> CheckResult:
     face = _single_face(ctx)
     if face is None:
-        return CheckResult(name="eyes_open", passed=False, detail="requires exactly one face")
+        return CheckResult(
+            name="eyes_open", passed=False, detail="requires exactly one face"
+        )
     blink = max(
         face.blendshapes.get("eyeBlinkLeft", 0.0),
         face.blendshapes.get("eyeBlinkRight", 0.0),
@@ -106,7 +114,9 @@ def check_no_sunglasses(ctx: CheckContext) -> CheckResult:
     face = _single_face(ctx)
     if face is None:
         return CheckResult(
-            name="no_sunglasses", passed=False, best_effort=True,
+            name="no_sunglasses",
+            passed=False,
+            best_effort=True,
             detail="requires exactly one face",
         )
     eye_signal = any(
@@ -119,7 +129,9 @@ def check_no_sunglasses(ctx: CheckContext) -> CheckResult:
         name="no_sunglasses",
         passed=ok,
         best_effort=True,
-        detail="iris landmarks present" if ok else "eyes not clearly detected (sunglasses?)",
+        detail="iris landmarks present"
+        if ok
+        else "eyes not clearly detected (sunglasses?)",
     )
 
 
@@ -127,7 +139,9 @@ def check_no_headwear(ctx: CheckContext) -> CheckResult:
     face = _single_face(ctx)
     if face is None:
         return CheckResult(
-            name="no_headwear", passed=False, best_effort=True,
+            name="no_headwear",
+            passed=False,
+            best_effort=True,
             detail="requires exactly one face",
         )
     # Heuristic: if the face bbox reaches the very top edge, the forehead /
@@ -137,7 +151,9 @@ def check_no_headwear(ctx: CheckContext) -> CheckResult:
         name="no_headwear",
         passed=ok,
         best_effort=True,
-        detail="forehead region visible" if ok else "forehead region reaches image edge (headwear?)",
+        detail="forehead region visible"
+        if ok
+        else "forehead region reaches image edge (headwear?)",
         measured={"forehead_top": round(face.bbox.y_min, 3)},
     )
 

@@ -10,13 +10,22 @@ from edutap.image_api.face_analysis import HeadPose
 from edutap.image_api.settings import Settings
 
 
-def _face(bbox=BBox(0.35, 0.30, 0.65, 0.75), yaw=0.0, pitch=0.0, roll=0.0,
-          blink=0.1, has_iris=True):
+def _face(
+    bbox=BBox(0.35, 0.30, 0.65, 0.75),
+    yaw=0.0,
+    pitch=0.0,
+    roll=0.0,
+    blink=0.1,
+    has_iris=True,
+):
     return Face(
         bbox=bbox,
         head_pose=HeadPose(yaw=yaw, pitch=pitch, roll=roll),
-        blendshapes={"eyeBlinkLeft": blink, "eyeBlinkRight": blink,
-                     "eyeLookInLeft": 0.2},
+        blendshapes={
+            "eyeBlinkLeft": blink,
+            "eyeBlinkRight": blink,
+            "eyeLookInLeft": 0.2,
+        },
         has_iris=has_iris,
     )
 
