@@ -53,16 +53,23 @@ def bbox_from_landmarks(points: list[tuple[float, float]]) -> BBox:
 
 
 def head_pose_from_matrix(matrix: np.ndarray) -> HeadPose:
-    """Decompose the rotation part of a 4x4 (or 3x3) matrix into Euler angles."""
+    """Decompose the rotation part of a 4x4 (or 3x3) matrix into Euler angles.
+
+    Follows MediaPipe's canonical face coordinate system (+X to the subject's
+    left, +Y up, +Z out of the face toward the camera): a rotation about X is
+    a head nod and is reported as ``pitch``, a rotation about Y is a head turn
+    and is reported as ``yaw``, and a rotation about Z is a head tilt and is
+    reported as ``roll``.
+    """
     r = np.asarray(matrix, dtype=float)[:3, :3]
     sy = math.sqrt(r[0, 0] ** 2 + r[0, 2] ** 2)
     if sy > 1e-6:
-        roll = math.atan2(r[1, 2], r[1, 1])
-        pitch = math.atan2(-r[1, 0], sy)
+        pitch = math.atan2(r[1, 2], r[1, 1])
+        roll = math.atan2(-r[1, 0], sy)
         yaw = math.atan2(r[0, 2], r[0, 0])
     else:
-        roll = math.atan2(r[2, 1], r[2, 2])
-        pitch = math.atan2(-r[1, 0], sy)
+        pitch = math.atan2(r[2, 1], r[2, 2])
+        roll = math.atan2(-r[1, 0], sy)
         yaw = 0.0
     return HeadPose(
         yaw=math.degrees(yaw),
@@ -90,7 +97,8 @@ class FaceAnalysisResult:
         return len(self.faces)
 
 
-# MediaPipe iris landmark indices (refine_landmarks adds indices 468-477).
+# The bundled face_landmarker model returns 478 landmarks by default, with
+# iris landmarks at indices 468-477.
 _IRIS_INDEX_MIN = 468
 
 

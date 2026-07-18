@@ -175,7 +175,7 @@ async def validate_and_crop(
         image = Image.open(file.file)
         image.load()
     except (UnidentifiedImageError, OSError) as exc:
-        raise HTTPException(status_code=422, detail=f"Unreadable image: {exc}")
+        raise HTTPException(status_code=422, detail=f"Unreadable image: {exc}") from exc
 
     analyzer: FaceAnalyzer = app.state.face_analyzer
     result = await anyio.to_thread.run_sync(analyzer.analyze, image)
@@ -183,7 +183,7 @@ async def validate_and_crop(
     ctx = CheckContext(result=result, settings=get_settings())
     checks = run_checks(ctx)
 
-    crop_mode = None
+    crop_mode: Literal["face"] | None = None
     output = OutputImage(width=size, height=size, image_base64=None)
     if result.face_count == 1:
         cropped = crop_face_centered(

@@ -1,4 +1,5 @@
 # src/edutap/image_api/checks.py
+from .face_analysis import Face
 from .face_analysis import FaceAnalysisResult
 from .settings import Settings
 from .validation_models import CheckResult
@@ -17,7 +18,7 @@ class CheckContext:
 Check = Callable[[CheckContext], CheckResult]
 
 
-def _single_face(ctx: CheckContext):
+def _single_face(ctx: CheckContext) -> Face | None:
     faces = ctx.result.faces
     return faces[0] if len(faces) == 1 else None
 

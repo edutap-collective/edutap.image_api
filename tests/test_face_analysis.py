@@ -39,6 +39,36 @@ def test_head_pose_yaw_rotation():
     assert abs(abs(pose.yaw) - 30) < 1.0
 
 
+def test_head_pose_pitch_rotation():
+    """A pure rotation about the X axis (a head nod) must be reported as pitch,
+    not roll or yaw."""
+    angle = math.radians(30)
+    rot = np.eye(4)
+    rot[1, 1] = math.cos(angle)
+    rot[1, 2] = -math.sin(angle)
+    rot[2, 1] = math.sin(angle)
+    rot[2, 2] = math.cos(angle)
+    pose = head_pose_from_matrix(rot)
+    assert abs(abs(pose.pitch) - 30) < 1.0
+    assert abs(pose.roll) < 1.0
+    assert abs(pose.yaw) < 1.0
+
+
+def test_head_pose_roll_rotation():
+    """A pure rotation about the Z axis (a head tilt) must be reported as roll,
+    not pitch or yaw."""
+    angle = math.radians(20)
+    rot = np.eye(4)
+    rot[0, 0] = math.cos(angle)
+    rot[0, 1] = -math.sin(angle)
+    rot[1, 0] = math.sin(angle)
+    rot[1, 1] = math.cos(angle)
+    pose = head_pose_from_matrix(rot)
+    assert abs(abs(pose.roll) - 20) < 1.0
+    assert abs(pose.pitch) < 1.0
+    assert abs(pose.yaw) < 1.0
+
+
 @pytest.fixture(scope="module")
 def analyzer():
     a = FaceAnalyzer(get_settings().model_path)
