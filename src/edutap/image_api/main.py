@@ -1,3 +1,9 @@
+from .checks import CheckContext
+from .checks import overall_passed
+from .checks import run_checks
+from .checks import warnings_from
+from .crop_utils import crop_face_centered
+from .face_analysis import FaceAnalyzer
 from .models import AppleWalletImageDefinitions
 from .models import AppleWalletImageDefinitionsLiteral
 from .models import AspectRatioEnum
@@ -5,10 +11,14 @@ from .models import GoogleWalletImageDefinitions
 from .models import GoogleWalletImageDefinitionsLiteral
 from .models import ImageSize
 from .models import MaskTypeEnum
+from .settings import get_settings
+from .validation_models import OutputImage
+from .validation_models import ValidationReport
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi import File
 from fastapi import Form
+from fastapi import HTTPException
 from fastapi import UploadFile
 from fastapi.logger import logger
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,10 +26,14 @@ from fastapi.responses import FileResponse
 from importlib.metadata import version
 from PIL import Image
 from PIL import ImageDraw
+from PIL import UnidentifiedImageError
 from starlette.background import BackgroundTask
 from typing import Annotated
 from typing import Literal
 
+import anyio
+import base64
+import io
 import os
 import pathlib
 import tempfile
@@ -34,13 +48,11 @@ BASE_DIR = pathlib.Path(__file__).parent.resolve()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initializing
     logger.info("Start eduTAP Image API Service")
-    # template_folder = str(BASE_DIR / "templates")
-    # fastapi_chameleon.global_init(template_folder, auto_reload=True)
-    # Serve
+    settings = get_settings()
+    app.state.face_analyzer = FaceAnalyzer(settings.model_path)
     yield
-    # Shutdown
+    app.state.face_analyzer.close()
     logger.info("Shutdown eduTAP Image API Service")
 
 
@@ -90,14 +102,15 @@ async def crop_file(
         int, Form(description="Radius of Mask Box, if mask == BOX")
     ] = 100,
 ):
-    logger.debug(f"Filename: {file.filename}")
-    logger.debug(f"Filesize: {file.size}")
-    logger.debug(f"File Headers: {file.headers}")
-    logger.debug(f"Mask: {mask}")
-    logger.debug(f"Aspect Ratio: {aspect_ratio}")
-    logger.debug(f"Height: {height}")
-    logger.debug(f"Width: {width}")
-    logger.debug(f"Radius: {radius}")
+    # breakpoint()
+    logger.debug("Filename: %s", file.filename)
+    logger.debug("Filesize: %s", file.size)
+    logger.debug("File Headers: %s", file.headers)
+    logger.debug("Mask: %s", mask)
+    logger.debug("Aspect Ratio: %s", aspect_ratio)
+    logger.debug("Height: %s", height)
+    logger.debug("Width: %s", width)
+    logger.debug("Radius: %s", radius)
 
     # Note: When uncommenting, remove the response_class=FileResponse from the function signature, otherwise this will raise an error
     # return {"file-name": file.filename, "file-size": file.size}
@@ -148,6 +161,45 @@ async def crop_file(
         output_file,
         filename="mask.png",
         background=BackgroundTask(os.remove, output_file),
+    )
+
+
+@app.post("/validate_and_crop/")
+async def validate_and_crop(
+    file: Annotated[UploadFile, File(description="Portrait image")],
+    size: Annotated[
+        int, Form(description="Output edge length in px", ge=16, le=4096)
+    ] = 512,
+) -> ValidationReport:
+    try:
+        image = Image.open(file.file)
+        image.load()
+    except (UnidentifiedImageError, OSError) as exc:
+        raise HTTPException(status_code=422, detail=f"Unreadable image: {exc}") from exc
+
+    analyzer: FaceAnalyzer = app.state.face_analyzer
+    result = await anyio.to_thread.run_sync(analyzer.analyze, image)
+
+    ctx = CheckContext(result=result, settings=get_settings())
+    checks = run_checks(ctx)
+
+    crop_mode: Literal["face"] | None = None
+    output = OutputImage(width=size, height=size, image_base64=None)
+    if result.face_count == 1:
+        cropped = crop_face_centered(
+            image, result.faces[0].bbox, size, get_settings().crop_margin_factor
+        )
+        buffer = io.BytesIO()
+        cropped.save(buffer, format="PNG", optimize=True)
+        output.image_base64 = base64.b64encode(buffer.getvalue()).decode("ascii")
+        crop_mode = "face"
+
+    return ValidationReport(
+        passed=overall_passed(checks),
+        crop_mode=crop_mode,
+        checks=checks,
+        warnings=warnings_from(checks),
+        output=output,
     )
 
 

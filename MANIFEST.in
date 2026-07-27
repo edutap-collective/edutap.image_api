@@ -2,3 +2,4 @@ include *.yaml
 include Dockerfile
 recursive-exclude frontend *
 recursive-exclude tests *.jpg
+recursive-include src/edutap/image_api/assets *.task

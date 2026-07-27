@@ -23,6 +23,7 @@ classifiers = [
 ]
 dependencies = [
     "pydantic[email,dotenv]>=2.0",
+    "pydantic-settings>=2.0",
     "python-dotenv",
     "fastapi",
     "fastapi-chameleon",
@@ -31,7 +32,9 @@ dependencies = [
     "requests",
     "aiokafka",
     "pillow",
-    "opencv-python",
+    "numpy",
+    "anyio",
+    "mediapipe>=0.10.14",
   ]
 
 [project.urls]
@@ -42,6 +45,8 @@ Documentation = "https://docs.edutap.eu/packages/edutap_image_api/index.html"
 [project.optional-dependencies]
 test = [
     "pytest",
+    "pytest-asyncio",
+    "httpx",
     "requests-mock",
 ]
 typecheck  = [
@@ -64,11 +69,18 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"edutap.image_api" = ["assets/*.task"]
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = [
     "tests",
 ]
+markers = [
+    "integration: tests that load the MediaPipe model and real images",
+]
+asyncio_mode = "auto"
 
 [tool.isort]
 profile = "plone"
