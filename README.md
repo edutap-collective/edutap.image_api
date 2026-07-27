@@ -59,6 +59,7 @@ Open `http://127.0.0.1:9500/docs` for the interactive Swagger UI.
 | `POST` | `/crop/` | Crop and mask an image to an aspect ratio and size. |
 | `POST` | `/crop_wallet_assets_apple/` | Resize an image to an Apple Wallet asset size. |
 | `POST` | `/crop_wallet_assets_google/` | Resize an image to a Google Wallet asset size. |
+| `POST` | `/validate_and_crop/` | Validate a portrait and return a face-centered crop. |
 
 Crop an image with `curl`:
 
