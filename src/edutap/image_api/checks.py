@@ -179,4 +179,8 @@ def overall_passed(results: list[CheckResult]) -> bool:
 
 
 def warnings_from(results: list[CheckResult]) -> list[str]:
-    return [f"{r.name}: {r.detail}" for r in results if r.best_effort and not r.passed]
+    return [
+        f"{r.name}: {r.detail}"
+        for r in results
+        if r.best_effort and not r.passed and r.detail != "requires exactly one face"
+    ]
