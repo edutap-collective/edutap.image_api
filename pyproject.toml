@@ -8,12 +8,18 @@ authors = [
     {name = "Philipp Auersperg-Castell", email = "phil@bluedynamics.com"},
     {name = "Alexander Loechel", email = "Alexander.Loechel@lmu.de"},
 ]
-requires-python = ">=3.10"
+# RAISED FROM >=3.10 ON 2026-08-30, and not by choice of this package: the floor is
+# set by edutap.observability_settings, which requires >=3.13 and is the reason error
+# reporting, tracing and structured logging exist here at all.
+#
+# What was actually given up is smaller than the number suggests. The container has
+# built on python:3.14 since the Dockerfile was written, so 3.10 to 3.12 were declared
+# and never deployed. The one real risk in the move -- mediapipe, whose 0.10.x wheels
+# stop at cp312 -- does not apply: this package resolves mediapipe 1.0.1, which ships
+# a single pure `py3` wheel and therefore installs on every version in range.
+requires-python = ">=3.13"
 license = { text = "EUPL 1.2" }
 classifiers = [
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "License :: OSI Approved :: European Union Public Licence 1.2 (EUPL 1.2)",
@@ -37,6 +43,25 @@ dependencies = [
     "numpy",
     "anyio",
     "mediapipe>=0.10.14",
+    # Error reporting, tracing and structured logging in one call, from the house
+    # package. The option set behind it was chosen against measurements and is worth
+    # nothing sitting next to a second copy of the `sentry_sdk.init()` that applies
+    # it -- hence the dependency and not a local module. It brings sentry-sdk,
+    # structlog and logfire with it; naming those here would pin versions against its
+    # own resolution.
+    #
+    # `[fastapi]` IS NOT OPTIONAL for this service: `instrument_fastapi_safely` needs
+    # `opentelemetry-instrumentation-fastapi`, and bare `logfire` does not carry it.
+    # Without the extra the start ends in `ModuleNotFoundError:
+    # opentelemetry.instrumentation.asgi` -- but ONLY where
+    # `OTEL_EXPORTER_OTLP_ENDPOINT` is set, which is a cluster and not a developer's
+    # machine.
+    #
+    # 0.1.6 IS THE FLOOR, not 0.1.5: only it passes a `release` to `sentry_sdk.init`.
+    # Without that every event in the error tracker carries an empty version, and
+    # "fixed in the next release" -- the workflow that follows every fix -- has
+    # nothing to hang on.
+    "edutap.observability_settings[fastapi]>=0.1.6,<0.2",
   ]
 
 [project.urls]
@@ -88,6 +113,12 @@ asyncio_mode = "auto"
 profile = "plone"
 
 [tool.black]
+# DELIBERATELY BEHIND `requires-python`, and not an oversight. This tells black which
+# syntax it may emit, not which interpreters the package supports, and the pinned hook
+# in .pre-commit-config.yaml is black 23.9.1, whose newest known target is py312 --
+# writing py313 here makes every `pre-commit run` abort with "Invalid value for
+# --target-version" instead of formatting anything. Raising it means bumping that pin,
+# and a current black reformats two files this branch never touched.
 target-version = ["py310"]
 include = "src"
 
