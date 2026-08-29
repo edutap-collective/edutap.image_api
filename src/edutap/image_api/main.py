@@ -15,6 +15,10 @@ from .settings import get_settings
 from .validation_models import OutputImage
 from .validation_models import ValidationReport
 from contextlib import asynccontextmanager
+from edutap.observability_settings import install_observability
+from edutap.observability_settings import instrument_fastapi_safely
+from edutap.observability_settings import ObservabilitySettings
+from edutap.observability_settings import OTLP_ENDPOINT_VARIABLE
 from fastapi import FastAPI
 from fastapi import File
 from fastapi import Form
@@ -45,10 +49,83 @@ logger.setLevel("DEBUG")
 __version__ = version("edutap.image_api")
 BASE_DIR = pathlib.Path(__file__).parent.resolve()
 
+#: How this service names itself in an error report and in an exported span.
+#:
+#: The distribution name, not the repository name and not the container name: it is
+#: what every other artefact of this package already says, so a span, a log line and
+#: a `pip show` agree on one spelling.
+SERVICE_NAME = "edutap.image_api"
+
+#: Error reporting, tracing and structured logging, resolved at import.
+#:
+#: HERE AND NOT IN `lifespan`, deliberately. Everything below this line reads
+#: `get_settings()` -- the application object itself does, for its `root_path` -- and
+#: `install_observability` exists to be called *before* a service resolves the
+#: settings it needs to run, so that a process refusing to start is reported rather
+#: than silently absent. A malformed `IMAGE_API_*` value raises at import; with the
+#: call further down, that failure would be the one failure nobody ever sees.
+#:
+#: Reading this can never fail for want of a value: no field of `ObservabilitySettings`
+#: is required, which is precisely what makes the ordering possible.
+#:
+#: The prefix is `EDUTAP_`, not this package's own `IMAGE_API_`. These fields are
+#: defined by an eduTAP package and mean the same thing in every eduTAP service; a
+#: deployment sets `EDUTAP_SENTRY_DSN` once per service and `EDUTAP_ENVIRONMENT` once
+#: per stack, under the name the sibling services already use.
+observability = ObservabilitySettings()
+install_observability(
+    observability,
+    service_name=SERVICE_NAME,
+    service_version=__version__,
+)
+
+
+def exports_to_a_collector() -> bool:
+    """Whether an exporter will actually carry a span off this process.
+
+    Two conditions, and both are needed. `telemetry_enabled` is the deliberate off
+    switch; the endpoint is what decides whether anything is listening, and it is read
+    from the environment rather than from a field because
+    `OTEL_EXPORTER_OTLP_ENDPOINT` is the variable every OpenTelemetry SDK reads by
+    itself. Inventing a second name for it under `IMAGE_API_` would mean asking an
+    operator to set the same address twice.
+    """
+    return observability.telemetry_enabled and bool(
+        os.environ.get(OTLP_ENDPOINT_VARIABLE)
+    )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Start eduTAP Image API Service")
+
+    # THE HTTP SIDE OF OBSERVABILITY, and it has to happen here rather than beside
+    # the `install_observability` call above. That call configures the *process* --
+    # error reporting, the exporter, structured logging -- and knows nothing about
+    # this application, so it produces no request spans by itself. Instrumenting
+    # needs the finished route table, and the routes below are registered while this
+    # module executes; installing it next to the application object would instrument
+    # an application that has no endpoints yet.
+    #
+    # `instrument_fastapi_safely` rather than `logfire.instrument_fastapi`: the bare
+    # instrumentation writes the raw request path into five span attributes. This
+    # service takes person images, and a deployment is free to put an identifier in a
+    # path; the house helper substitutes the route template and thereby honours
+    # `person_uid_mode` instead of leaving it to be discovered later.
+    #
+    # ONLY WHEN SOMETHING EXPORTS. Instrumentation patches the application whether or
+    # not a receiver exists, and a span nobody collects is work done on every request.
+    if exports_to_a_collector():
+        instrument_fastapi_safely(app, observability)
+        logger.info("FastAPI instrumentation active")
+    else:
+        logger.info(
+            "No FastAPI instrumentation -- telemetry_enabled=%s, %s=%s",
+            observability.telemetry_enabled,
+            OTLP_ENDPOINT_VARIABLE,
+            os.environ.get(OTLP_ENDPOINT_VARIABLE) or "(unset)",
+        )
+
     settings = get_settings()
     app.state.face_analyzer = FaceAnalyzer(settings.model_path)
     yield
@@ -60,6 +137,16 @@ app = FastAPI(
     title="eduTAP Image API Service",
     description="A FastAPI bases Image API Service for eduTAP, to crop and manipulate images.",
     version=__version__,
+    # WHERE A PROXY MOUNTED THIS SERVICE. Empty unless a deployment says otherwise --
+    # see `Settings.root_path` for the measurement behind it. Without this, a proxy
+    # that routes by path prefix and forwards the prefix unchanged gets a 404 from
+    # every endpoint, `/docs` and `/openapi.json` included, and the OpenAPI document
+    # is unreachable at exactly the address the service is published under.
+    #
+    # It also puts the prefix into the `servers` entry of the generated OpenAPI
+    # document, so a client generated from that document calls the deployed address
+    # rather than the bare one.
+    root_path=get_settings().root_path,
     lifespan=lifespan,
 )
 

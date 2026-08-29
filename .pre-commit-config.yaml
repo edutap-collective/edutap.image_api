@@ -42,7 +42,12 @@ repos:
   hooks:
   - id: pyroma
 - repo: https://github.com/mgedmin/check-python-versions
-  rev: "0.21.3"
+  # 0.21.3 predates Python 3.13 and therefore cannot read this package's own
+  # `requires-python` any more: with `>=3.13` it resolves the range to the empty set
+  # and reports a mismatch against the classifiers no matter what they say. It was
+  # already failing before the floor moved -- it read `>=3.10` as "3.10, 3.11" -- so
+  # this bump repairs a check rather than silencing one.
+  rev: "0.24.0"
   hooks:
   - id: check-python-versions
     args: ['--only', 'pyproject.toml']

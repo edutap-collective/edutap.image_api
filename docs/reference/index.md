@@ -9,4 +9,5 @@ Use it to look up endpoints, parameters, and the built-in image definitions.
 validate-and-crop
 api-endpoints
 image-definitions
+configuration
 ```
