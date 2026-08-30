@@ -10,7 +10,10 @@ name: Publish container image
 on:
   push:
     branches: ["main"]
-    tags: ["v*.*.*"]
+    # Date versions, not semver: this is a SERVICE. The house convention splits
+    # on the kind of artefact -- a service is deployed and pinned by the date it
+    # was built, a library is depended upon and needs an ordered version.
+    tags: ["20[0-9][0-9]-[0-1][0-9]-[0-3][0-9]_[0-2][0-9][0-5][0-9]"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
@@ -59,8 +62,14 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            # `type=ref,event=tag` takes the tag name VERBATIM, which is what a
+            # date version needs. THE TRIGGER ABOVE IS NOT ENOUGH ON ITS OWN:
+            # with the `type=semver` rules that stood here, a tag like
+            # 2026-08-30_0331 produced NOTHING -- and did so silently. The run
+            # went green and pushed only `sha-<...>`; the registry then answered
+            # `not found` to whoever tried to pin it. Three sibling repositories
+            # learned this the expensive way on 2026-08-30.
+            type=ref,event=tag
             type=sha,format=long
             type=raw,value=latest,enable={{is_default_branch}}
 
