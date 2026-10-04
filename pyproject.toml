@@ -61,7 +61,7 @@ dependencies = [
     # Without that every event in the error tracker carries an empty version, and
     # "fixed in the next release" -- the workflow that follows every fix -- has
     # nothing to hang on.
-    "edutap.observability_settings[fastapi]>=0.1.6,<0.2",
+    "edutap.observability_settings[fastapi]>=0.2,<0.3",
   ]
 
 [project.urls]
